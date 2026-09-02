@@ -6,7 +6,6 @@ pipeline {
         IMAGE_TAG       = 'staging'
         BACKEND_IMAGE   = "${DOCKER_REGISTRY}/cars-api"
         FRONTEND_IMAGE  = "${DOCKER_REGISTRY}/cars-web"
-        BUILD_TAG       = "${IMAGE_TAG}-${BUILD_NUMBER}"
     }
 
     stages {
@@ -19,8 +18,8 @@ pipeline {
         stage('Build Images') {
             steps {
                 sh """
-                    docker build -t ${FRONTEND_IMAGE}:${BUILD_TAG} -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
-                    docker build -t ${BACKEND_IMAGE}:${BUILD_TAG} -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
+                    docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
+                    docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
                 """
             }
         }
@@ -30,9 +29,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
                         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-                        docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
+                        docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER}
                         docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                        docker push ${BACKEND_IMAGE}:${BUILD_TAG}
+                        docker push ${BACKEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER}
                         docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
                     """
                 }
@@ -42,8 +41,8 @@ pipeline {
         stage('Deploy to Docker Swarm') {
             steps {
                 sh """
-                    docker service update --image ${FRONTEND_IMAGE}:${BUILD_TAG} --with-registry-auth app_frontend
-                    docker service update --image ${BACKEND_IMAGE}:${BUILD_TAG} --with-registry-auth app_backend
+                    docker service update --image ${FRONTEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} app_frontend
+                    docker service update --image ${BACKEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} app_backend
                 """
             }
         }
@@ -52,15 +51,9 @@ pipeline {
     post {
         always {
             sh """
-                docker rmi -f ${FRONTEND_IMAGE}:${BUILD_TAG} ${BACKEND_IMAGE}:${BUILD_TAG} || true
+                docker rmi -f ${FRONTEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} ${BACKEND_IMAGE}:${IMAGE_TAG}-${BUILD_NUMBER} || true
                 docker logout || true
             """
-        }
-        success {
-            echo "Pipeline deployed successfully with tag: ${BUILD_TAG}"
-        }
-        failure {
-            echo "Pipeline deployment failed."
         }
     }
 }
