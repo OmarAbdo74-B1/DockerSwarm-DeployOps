@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ${DOCKER_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - app-net
+      - traefik-public
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@pgpool:5432/${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+    deploy:
+      mode: replicated
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 15s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik-public"
+        - "traefik.http.routers.api-prod.rule=Host(`api.${APP_DOMAIN}`)"
+        - "traefik.http.routers.api-prod.entrypoints=websecure"
+        - "traefik.http.routers.api-prod.tls.certresolver=letsencrypt"
+        - "traefik.http.services.api-prod.loadbalancer.server.port=3000"
+
+  frontend:
+    image: ${DOCKER_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:90/ || curl -f http://localhost:90/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - traefik-public
+    deploy:
+      mode: replicated
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 15s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik-public"
+        - "traefik.http.routers.app-prod.rule=Host(`${APP_DOMAIN}`)"
+        - "traefik.http.routers.app-prod.entrypoints=websecure"
+        - "traefik.http.routers.app-prod.tls.certresolver=letsencrypt"
+        - "traefik.http.services.app-prod.loadbalancer.server.port=90"
+
+networks:
+  app-net:
+    driver: overlay
+    attachable: true
+  traefik-public:
+    external: true

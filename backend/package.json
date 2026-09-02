@@ -1,0 +1,23 @@
+{
+  "name": "automarket-backend",
+  "version": "1.0.0",
+  "description": "Backend API for the AutoMarket car marketplace frontend, backed by PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate": "node -e \"const fs=require('fs');const pool=require('./db/pool');pool.query(fs.readFileSync('./db/schema.sql','utf8')).then(()=>{console.log('Schema applied');process.exit(0)}).catch(e=>{console.error(e);process.exit(1)})\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "brace-expansion": "^5.0.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ip-address": "^10.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "tar": "^7.5.22",
+    "undici": "^6.28.0"
+  }
+}
