@@ -7,7 +7,7 @@ Comprehensive production operational documentation for the multi-node AWS Docker
 
 ## Architecture Overview
 
-![High-Availability Production Docker Swarm Infrastructure](./architecture-diagram.jpg)
+![High-Availability Production Docker Swarm Infrastructure](docs/architecture-diagram.jpg)
 
 ---
 
